@@ -7,7 +7,8 @@
   "description": "Static, local-only Utah Schedule 1 time-of-use analyzer.",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "generate-favicons": "node scripts/generate-favicons.mjs",
+    "build": "npm run generate-favicons && tsc --noEmit && vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
