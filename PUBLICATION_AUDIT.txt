@@ -1,0 +1,4 @@
+Export: web
+Source: tou-analyzer
+Audit: passed
+Git history: fresh repository with one current-license initial commit

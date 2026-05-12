@@ -1,0 +1,6 @@
+stackback 0.0.2
+Declared license: MIT
+Author: Roman Shtylman <shtylman@gmail.com>
+Repository: git://github.com/shtylman/node-stackback.git
+
+No standalone LICENSE, LICENCE, COPYING, or NOTICE file was present in the installed npm package. This metadata file preserves the package license declaration from package-lock.json/package.json.

@@ -1,0 +1,24 @@
+{
+  "name": "tou-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE.md",
+  "type": "module",
+  "description": "Static, local-only Utah Schedule 1 time-of-use analyzer.",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/playfair-display": "^5.2.8",
+    "@fontsource/source-serif-4": "^5.2.9",
+    "@uwdata/vgplot": "^0.18.0",
+    "vite": "^7.1.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  }
+}
