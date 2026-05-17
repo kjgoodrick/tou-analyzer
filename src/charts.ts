@@ -462,6 +462,13 @@ ORDER BY timestamp_local, read_time_occurrence, interval_index
       stroke: "var(--chart-line)",
       strokeWidth: 1
     }),
+    vg.lineY(source(hoverTable, focusRange), {
+      x: "hover_mid_local",
+      y: "usage_kwh",
+      strokeOpacity: 0,
+      pointerEvents: "none"
+    }),
+    vg.nearestX({ as: hoverPoint, maxRadius: 10000 }),
     vg.rectX(source(hoverTable, hoverPoint), {
       x1: "timestamp_local",
       x2: "timestamp_end_local",
@@ -526,14 +533,6 @@ ORDER BY timestamp_local, read_time_occurrence, interval_index
       paintOrder: "stroke",
       pointerEvents: "none"
     }),
-    vg.dot(source(hoverTable, focusRange), {
-      x: "hover_mid_local",
-      y: "usage_kwh",
-      r: 4,
-      fillOpacity: 0,
-      strokeOpacity: 0
-    }),
-    vg.nearestX({ as: hoverPoint, maxRadius: 10000 }),
     ...commonOptions(width, 330)
   ) as HTMLElement;
   const middle = vg.plot(
