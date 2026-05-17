@@ -2,7 +2,12 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   build: {
-    chunkSizeWarningLimit: 900
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/[name]-[hash]-sample-fix.js"
+      }
+    }
   },
   test: {
     environment: "node"
