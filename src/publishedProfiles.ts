@@ -12,8 +12,8 @@ export const PUBLISHED_PROFILES: PublishedProfile[] = [
   {
     id: "schedule-1-residential-average-2021-2023",
     label: "sample data",
-    fileName: "schedule-1-residential-average-2021-2023.parquet",
-    path: "/sample-data/schedule-1-residential-average-2021-2023.parquet"
+    fileName: "schedule-1-residential-average-2021-2023-duckdb-wasm.parquet",
+    path: "/sample-data/schedule-1-residential-average-2021-2023-duckdb-wasm.parquet"
   }
 ];
 
