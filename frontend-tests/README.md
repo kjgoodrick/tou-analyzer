@@ -1,10 +1,10 @@
-# Playwright Tests
+# Frontend Browser Tests
 
 Browser tests use Playwright against the local Vite app.
 
 ```sh
-npm run test:e2e
-npm run test:e2e:ui
+npm run test:frontend
+npm run test:frontend:ui
 npm run test:perf
 ```
 

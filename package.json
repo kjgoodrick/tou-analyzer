@@ -12,8 +12,8 @@
     "deploy": "npm run build && npx wrangler deploy",
     "deploy:preview": "npm run build && npx wrangler versions upload",
     "test": "vitest run",
-    "test:e2e": "playwright test --project=chromium --grep-invert @performance",
-    "test:e2e:ui": "playwright test --ui",
+    "test:frontend": "playwright test --project=chromium --grep-invert @performance",
+    "test:frontend:ui": "playwright test --ui",
     "test:perf": "playwright test --project=chromium --grep @performance",
     "typecheck": "tsc --noEmit"
   },

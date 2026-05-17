@@ -4,7 +4,7 @@ const port = Number(process.env.PLAYWRIGHT_PORT ?? 4173);
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./frontend-tests",
   timeout: 90 * 1000,
   expect: {
     timeout: 15 * 1000
