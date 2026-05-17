@@ -9,6 +9,8 @@
     "dev": "vite --host 127.0.0.1",
     "generate-favicons": "node scripts/generate-favicons.mjs",
     "build": "npm run generate-favicons && tsc --noEmit && vite build",
+    "deploy": "npm run build && npx wrangler deploy",
+    "deploy:preview": "npm run build && npx wrangler versions upload",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -20,6 +22,7 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "vitest": "^4.0.14"
+    "vitest": "^4.0.14",
+    "wrangler": "^4.92.0"
   }
 }

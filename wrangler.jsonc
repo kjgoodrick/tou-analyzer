@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tou-analyzer",
+  "preview_urls": true,
   "compatibility_date": "2026-05-12",
   "assets": {
     "directory": "./dist",

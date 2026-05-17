@@ -578,7 +578,7 @@ function render(): void {
   const extensionButton = document.querySelector<HTMLButtonElement>("#extension-import");
   if (extensionButton && !bridgeConfigured()) {
     extensionButton.disabled = true;
-    extensionButton.title = "Set the published extension ID in src/extensionBridge.ts before deploying this path.";
+    extensionButton.title = "Set VITE_UTILITY_ENERGY_DOWNLOADER_EXTENSION_ID for this deployment to enable extension import.";
   }
 
   const dashboard = document.querySelector<HTMLElement>("#dashboard");
