@@ -4,13 +4,13 @@ import "@fontsource/source-serif-4/latin-600.css";
 import "@fontsource/source-serif-4/latin-700.css";
 import "./styles.css";
 import { compareMonthlyUsage, compareRates, runMonthlyScenario, runScenario } from "./analysis";
-import { SAMPLE_RAW_ROWS } from "./data";
+import { SAMPLE_CSV } from "./data";
 import { bridgeConfigured, requestCsvFromExtension } from "./extensionBridge";
 import { formatDateRange, formatKwh, formatMoney, formatNumber, formatPercent, monthName } from "./format";
 import { DEFAULT_BILLING_ASSUMPTIONS, RIDER_DETAILS } from "./rates";
 import { clearCurrentImport, loadCurrentImport, saveCurrentImport } from "./storage";
 import { renderSummaryCharts, renderUsageChart } from "./charts";
-import { importSampleUsageObjects, importUsageFile } from "./mosaicData";
+import { importUsageFile } from "./mosaicData";
 import {
   BillingAssumptions,
   CustomerClassId,
@@ -427,7 +427,7 @@ function bindStaticEvents(): void {
   });
 
   document.querySelector<HTMLButtonElement>("#sample-import")?.addEventListener("click", () => {
-    runImport(() => importSampleUsageObjects(SAMPLE_RAW_ROWS, "Sample data"));
+    runImport(() => importUsageFile(new File([SAMPLE_CSV], "sample.csv", { type: "text/csv" })));
   });
 
   document.querySelector<HTMLButtonElement>("#clear-data")?.addEventListener("click", async () => {

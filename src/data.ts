@@ -374,6 +374,17 @@ export const SAMPLE_RAW_ROWS: RawUsageRow[] = [
   { timestamp_local: "2026-12-15T23:00:00", usage_kwh: 3.1 }
 ];
 
+function sampleCsvRow(row: RawUsageRow): string {
+  const timestamp = String(row.timestamp_local);
+  const [readDate, readTime = ""] = timestamp.split("T");
+  return `${timestamp},${readDate},${readTime.slice(0, 5)},${row.usage_kwh}`;
+}
+
+export const SAMPLE_CSV = [
+  "timestamp_local,read_date,read_time,usage_kwh",
+  ...SAMPLE_RAW_ROWS.map(sampleCsvRow)
+].join("\n");
+
 export const SAMPLE_ROWS: UsageInterval[] = normalizeUsageRows(
   SAMPLE_RAW_ROWS,
   "Sample data",

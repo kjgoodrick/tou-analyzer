@@ -171,8 +171,8 @@ function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 async function registerHolidayTableForUsage(): Promise<void> {
   const [bounds] = await queryJson<{ startYear: number; endYear: number }>(`
 SELECT
-  CAST(min(year(timestamp_local)) AS INTEGER) AS startYear,
-  CAST(max(year(timestamp_local)) AS INTEGER) AS endYear
+  min(year(timestamp_local)) AS startYear,
+  max(year(timestamp_local)) AS endYear
 FROM ${sqlIdentifier(TABLE_USAGE)}
 `.trim());
   const startYear = Number(bounds?.startYear);
