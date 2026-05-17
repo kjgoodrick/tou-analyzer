@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A guide to using Off Peak Advisor as a Utah time-of-use rate calculator for Schedule 1 TOU, off-peak savings, and local-only bill comparisons."
+    />
+    <meta name="application-name" content="Off Peak Advisor" />
+    <meta name="theme-color" content="#111418" />
+    <link rel="canonical" href="https://www.offpeakadvisor.com/utah-time-of-use-rate-calculator/" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Off Peak Advisor" />
+    <meta property="og:title" content="Utah Time-of-Use Rate Calculator" />
+    <meta
+      property="og:description"
+      content="Compare standard and time-of-use electric bills with local interval data, off-peak savings estimates, and EV charging scenarios."
+    />
+    <meta property="og:url" content="https://www.offpeakadvisor.com/utah-time-of-use-rate-calculator/" />
+    <meta property="og:image" content="https://www.offpeakadvisor.com/logo.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static-pages.css" />
+    <title>Utah Time-of-Use Rate Calculator | Off Peak Advisor</title>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/">Off Peak Advisor</a>
+        <nav aria-label="Guide navigation">
+          <a href="/utah-schedule-1-time-of-use-rates/">Schedule 1 TOU</a>
+          <a href="/off-peak-ev-charging-utah/">EV charging</a>
+          <a href="/">Calculator</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">Utah TOU calculator</p>
+        <h1>Compare standard and time-of-use electric costs with your own usage.</h1>
+        <p class="lede">
+          Off Peak Advisor estimates whether a Utah Schedule 1 time-of-use rate could lower your bill by checking when your electricity is used, not just how much you use.
+        </p>
+        <div class="cta-row">
+          <a class="button" href="/">Open the calculator</a>
+          <a class="button-secondary" href="/utah-schedule-1-time-of-use-rates/">Read about Schedule 1 TOU</a>
+        </div>
+
+        <section class="info-band" aria-label="Calculator highlights">
+          <div class="info-grid">
+            <div>
+              <h2>Local analysis</h2>
+              <p>Interval data is parsed in your browser. The app does not need a backend upload path to calculate the comparison.</p>
+            </div>
+            <div>
+              <h2>TOU timing</h2>
+              <p>The calculator separates evening on-peak energy from off-peak energy so the rate comparison matches when usage happens.</p>
+            </div>
+            <div>
+              <h2>EV scenarios</h2>
+              <p>Use the projection controls to estimate how off-peak charging could affect annual energy costs.</p>
+            </div>
+          </div>
+        </section>
+
+        <article class="article-body">
+          <h2>What the calculator answers</h2>
+          <p>
+            A time-of-use plan can be cheaper when most usage happens outside the higher-cost evening window. It can be more expensive when a home has a large share of weekday evening usage. Off Peak Advisor compares those outcomes month by month using interval usage data.
+          </p>
+
+          <h2>What you need</h2>
+          <ul>
+            <li>A CSV or Parquet file with interval electricity usage.</li>
+            <li>Your residence type, service phase, and local tax assumptions from your bill.</li>
+            <li>Optional EV assumptions if you want to model future off-peak charging.</li>
+          </ul>
+
+          <h2>How to interpret the result</h2>
+          <p>
+            The headline comparison shows estimated standard and TOU costs for the loaded period. If TOU is close, review the monthly charts and the on-peak share before deciding whether shifting laundry, cooling, cooking, or EV charging could make a meaningful difference.
+          </p>
+
+          <p class="note">
+            Rate schedules and rider adjustments can change. Use the calculator as a planning tool and compare its assumptions against your current bill before making a rate decision.
+          </p>
+        </article>
+      </main>
+
+      <footer class="footer">
+        <p>Off Peak Advisor runs calculations locally in your browser.</p>
+      </footer>
+    </div>
+  </body>
+</html>

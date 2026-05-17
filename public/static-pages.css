@@ -1,0 +1,206 @@
+:root {
+  --bg: #ffffff;
+  --panel-soft: #f7f7f8;
+  --text: #1b1e23;
+  --heading: #111418;
+  --muted: #626875;
+  --line: #ececee;
+  --accent: #4e79a7;
+  --accent-2: #c9933a;
+  --button-bg: #111418;
+  --button-text: #ffffff;
+  --font-display: "Playfair Display", Didot, "Bodoni 72", Georgia, serif;
+  --font-serif: "Source Serif 4", Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+  line-height: 1.55;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.page-shell {
+  width: min(920px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 26px 0 56px;
+}
+
+.topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 42px;
+}
+
+.brand {
+  color: var(--heading);
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 14px;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent-2);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p,
+ul {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--heading);
+  font-family: var(--font-display);
+  letter-spacing: 0;
+}
+
+h1 {
+  max-width: 760px;
+  margin-bottom: 18px;
+  font-size: clamp(2.3rem, 6vw, 4.6rem);
+  line-height: 0.98;
+}
+
+h2 {
+  margin: 42px 0 12px;
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+  line-height: 1.12;
+}
+
+h3 {
+  margin: 24px 0 8px;
+  font-size: 1.12rem;
+}
+
+.lede {
+  max-width: 760px;
+  color: var(--muted);
+  font-size: clamp(1.12rem, 2vw, 1.35rem);
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 28px 0 40px;
+}
+
+.button,
+.button-secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid var(--button-bg);
+  border-radius: 6px;
+  padding: 0.58rem 0.85rem;
+  font-family: var(--font-sans);
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.button {
+  background: var(--button-bg);
+  color: var(--button-text);
+}
+
+.button-secondary {
+  background: transparent;
+  color: var(--heading);
+}
+
+.info-band {
+  border-block: 1px solid var(--line);
+  background: var(--panel-soft);
+  margin: 34px calc(50% - 50vw);
+  padding: 26px max(16px, calc((100vw - 920px) / 2));
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.info-grid p {
+  margin-bottom: 0;
+}
+
+.article-body {
+  max-width: 760px;
+}
+
+.article-body li + li {
+  margin-top: 8px;
+}
+
+.note {
+  border-left: 3px solid var(--accent-2);
+  color: var(--muted);
+  padding-left: 14px;
+}
+
+.footer {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  margin-top: 50px;
+  padding-top: 18px;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-bottom: 32px;
+  }
+
+  .topbar nav {
+    justify-content: flex-start;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}

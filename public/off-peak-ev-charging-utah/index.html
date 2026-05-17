@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Estimate how off-peak EV charging in Utah could change residential time-of-use electricity costs with Off Peak Advisor."
+    />
+    <meta name="application-name" content="Off Peak Advisor" />
+    <meta name="theme-color" content="#111418" />
+    <link rel="canonical" href="https://www.offpeakadvisor.com/off-peak-ev-charging-utah/" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Off Peak Advisor" />
+    <meta property="og:title" content="Off-Peak EV Charging in Utah" />
+    <meta
+      property="og:description"
+      content="Use local interval data and EV assumptions to estimate whether time-of-use pricing could reduce charging costs."
+    />
+    <meta property="og:url" content="https://www.offpeakadvisor.com/off-peak-ev-charging-utah/" />
+    <meta property="og:image" content="https://www.offpeakadvisor.com/logo.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static-pages.css" />
+    <title>Off-Peak EV Charging in Utah | Off Peak Advisor</title>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/">Off Peak Advisor</a>
+        <nav aria-label="Guide navigation">
+          <a href="/utah-time-of-use-rate-calculator/">TOU calculator</a>
+          <a href="/utah-schedule-1-time-of-use-rates/">Schedule 1 TOU</a>
+          <a href="/">Open app</a>
+        </nav>
+      </header>
+
+      <main>
+        <p class="eyebrow">Off-peak EV charging</p>
+        <h1>EV charging can make time-of-use rates better or worse depending on when it happens.</h1>
+        <p class="lede">
+          In Utah, overnight charging can line up well with off-peak TOU pricing. Charging during weekday evenings can erase the same advantage.
+        </p>
+        <div class="cta-row">
+          <a class="button" href="/">Model EV charging</a>
+          <a class="button-secondary" href="/utah-schedule-1-time-of-use-rates/">Learn TOU timing</a>
+        </div>
+
+        <section class="info-band" aria-label="EV charging factors">
+          <div class="info-grid">
+            <div>
+              <h2>Miles</h2>
+              <p>Annual miles determine how much new energy the EV adds to the home load profile.</p>
+            </div>
+            <div>
+              <h2>Efficiency</h2>
+              <p>Miles per kWh converts driving into estimated charging energy.</p>
+            </div>
+            <div>
+              <h2>Timing</h2>
+              <p>The off-peak charging share determines how much of that new energy avoids the evening TOU window.</p>
+            </div>
+          </div>
+        </section>
+
+        <article class="article-body">
+          <h2>Why EV charging is different from many home loads</h2>
+          <p>
+            EV charging is often flexible. If the vehicle is parked overnight, charging can usually be scheduled after the evening on-peak period. That makes EV load a strong candidate for off-peak savings under a time-of-use rate.
+          </p>
+
+          <h2>How to model it</h2>
+          <ul>
+            <li>Load your current interval usage so the calculator can estimate your existing standard and TOU bills.</li>
+            <li>Set the number of future EVs, annual miles, and miles per kWh.</li>
+            <li>Adjust the off-peak charging percentage to compare overnight charging with less disciplined charging habits.</li>
+          </ul>
+
+          <h2>What to watch</h2>
+          <p>
+            If your existing home usage is already expensive under TOU, EV savings may not offset that penalty. If your existing usage is close to neutral, high off-peak EV charging can be enough to make the TOU option look better.
+          </p>
+
+          <p class="note">
+            The EV scenario is an energy-only planning estimate. Actual bills depend on the current tariff, riders, taxes, equipment behavior, and how consistently charging stays off-peak.
+          </p>
+        </article>
+      </main>
+
+      <footer class="footer">
+        <p>Last updated May 2026. Off Peak Advisor runs calculations locally in your browser.</p>
+      </footer>
+    </div>
+  </body>
+</html>

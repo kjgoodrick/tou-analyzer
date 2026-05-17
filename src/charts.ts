@@ -13,6 +13,7 @@ const TABLE_MONTHLY_PROFILE_MONTHS = "monthly_load_profile_months";
 const TABLE_MONTHLY_PROFILE_PEAK = "monthly_load_profile_peak";
 const TABLE_MONTHLY_PROFILE_EMPTY = "monthly_load_profile_empty";
 const TABLE_MONTHLY_PROFILE_SHARE = "monthly_load_profile_share";
+const TABLE_USAGE_HOVER = "usage_hover_intervals";
 const MONTHLY_PROFILE_TOU_COLOR = "#c9933a";
 const WHEEL_ZOOM_SENSITIVITY = 0.0009;
 const ZOOM_HANDOFF_MS = 31 * 24 * 60 * 60 * 1000;
@@ -20,6 +21,8 @@ const USAGE_MARGIN_LEFT = 44;
 const SUMMARY_MARGIN_LEFT = 54;
 const USAGE_MARGIN_TOP = 32;
 const SUMMARY_MARGIN_TOP = 38;
+const HOVER_LABEL_ESTIMATED_WIDTH = 260;
+const HOVER_LABEL_INSIDE_ESTIMATED_WIDTH = 190;
 const SERIES_COLORS = {
   standard: "#4e79a7",
   tou: "#c9933a",
@@ -41,6 +44,17 @@ const MONTH_NAMES = [
   "November",
   "December"
 ];
+
+type RenderGuard = () => boolean;
+
+function alwaysCurrent(): boolean {
+  // Default for standalone chart calls; dashboard redraws pass a guard that rejects stale async renders after data reloads.
+  return true;
+}
+
+function scopedTableName(base: string, scope: string): string {
+  return scope ? `${base}_${scope.replace(/[^A-Za-z0-9_]/g, "_")}` : base;
+}
 
 function asMillis(value: unknown): number {
   return value instanceof Date ? value.getTime() : Number(new Date(String(value)));
@@ -156,6 +170,10 @@ function chartWidth(container: HTMLElement): number {
 interface LinkedState {
   overviewRange: ReturnType<typeof vg.Selection.single>;
   detailRange: ReturnType<typeof vg.Selection.single>;
+  hoverLabelCutoff?: vg.Param<Date>;
+  hoverInsideIntervalMs?: vg.Param<number>;
+  labelFlipShare?: number;
+  labelInsideShare?: number;
   fullDomain: number[];
   top: HTMLElement;
   middle: HTMLElement;
@@ -172,7 +190,15 @@ function attachLinkedInteractions(state: LinkedState): void {
     }
     setPlotDomain(state.bottom, state.fullDomain);
     setPlotDomain(state.middle, overview);
-    setPlotDomain(state.top, detail ? intersectDomains(overview, detail) : overview);
+    const topDomain = detail ? intersectDomains(overview, detail) : overview;
+    setPlotDomain(state.top, topDomain);
+    if (state.hoverLabelCutoff && state.labelFlipShare != null) {
+      const cutoff = topDomain[1] - (topDomain[1] - topDomain[0]) * state.labelFlipShare;
+      state.hoverLabelCutoff.update(new Date(cutoff));
+    }
+    if (state.hoverInsideIntervalMs && state.labelInsideShare != null) {
+      state.hoverInsideIntervalMs.update((topDomain[1] - topDomain[0]) * state.labelInsideShare);
+    }
   };
 
   state.overviewRange.addEventListener("value", syncDomains);
@@ -326,21 +352,108 @@ function publishDataInterval(interactor: any, interval: number[]): void {
   interactor.selection.update(interactor.clause(dataInterval));
 }
 
-export async function renderUsageChart(container: HTMLElement, usage: ImportResult): Promise<void> {
+function sqlTimeLabel(timestamp: string, options: { meridiem?: boolean } = {}): string {
+  const hour = `hour(${timestamp})`;
+  const minute = `minute(${timestamp})`;
+  const meridiem = options.meridiem ?? true;
+  return `
+concat(
+  CAST(CASE
+    WHEN ${hour} = 0 THEN 12
+    WHEN ${hour} > 12 THEN ${hour} - 12
+    ELSE ${hour}
+  END AS VARCHAR),
+  CASE
+    WHEN ${minute} = 0 THEN ''
+    ELSE concat(':', lpad(CAST(${minute} AS VARCHAR), 2, '0'))
+  END${meridiem ? "," : ""}
+  ${meridiem ? "' '," : ""}
+  ${meridiem ? `CASE WHEN ${hour} < 12 THEN 'AM' ELSE 'PM' END` : ""}
+)`.trim();
+}
+
+function sqlSameMeridiem(start: string, end: string): string {
+  return `
+CASE
+  WHEN hour(${start}) < 12 AND hour(${end}) < 12 THEN TRUE
+  WHEN hour(${start}) >= 12 AND hour(${end}) >= 12 THEN TRUE
+  ELSE FALSE
+END`.trim();
+}
+
+function sqlDateTimeLabel(timestamp: string, options: { meridiem?: boolean } = {}): string {
+  return `
+concat(
+  strftime(${timestamp}, '%b '),
+  CAST(day(${timestamp}) AS VARCHAR),
+  strftime(${timestamp}, ', %Y, '),
+  ${sqlTimeLabel(timestamp, options)}
+)`.trim();
+}
+
+function sqlIntervalLabel(start: string, end: string): string {
+  return `
+CASE
+  WHEN CAST(${start} AS DATE) = CAST(${end} AS DATE)
+    AND ${sqlSameMeridiem(start, end)}
+    THEN concat(${sqlDateTimeLabel(start, { meridiem: false })}, ' to ', ${sqlTimeLabel(end)})
+  WHEN CAST(${start} AS DATE) = CAST(${end} AS DATE)
+    THEN concat(${sqlDateTimeLabel(start)}, ' to ', ${sqlTimeLabel(end)})
+  ELSE concat(${sqlDateTimeLabel(start)}, ' to ', ${sqlDateTimeLabel(end)})
+END`.trim();
+}
+
+export async function renderUsageChart(
+  container: HTMLElement,
+  usage: ImportResult,
+  isCurrent: RenderGuard = alwaysCurrent,
+  scope = ""
+): Promise<void> {
+  if (!isCurrent()) return;
   container.replaceChildren();
   if (!(usage.usageSummary?.intervalCount ?? usage.rows.length)) return;
   await ensureUsageTable(usage);
+  if (!isCurrent()) return;
+  const usageTable = scopedTableName(TABLE_USAGE, scope);
+  if (usageTable !== TABLE_USAGE) {
+    await execSql(`CREATE OR REPLACE TABLE ${usageTable} AS SELECT * FROM ${TABLE_USAGE}`);
+    if (!isCurrent()) return;
+  }
   const [extent] = await queryJson<{ lo: string; hi: string }>(
-    `SELECT min(timestamp_local) AS lo, max(timestamp_end_local) AS hi FROM ${TABLE_USAGE}`
+    `SELECT min(timestamp_local) AS lo, max(timestamp_end_local) AS hi FROM ${usageTable}`
   );
-  const fullDomain = [asMillis(extent.lo), asMillis(extent.hi)];
+  if (!isCurrent()) return;
   const width = chartWidth(container);
+  const plotWidth = Math.max(1, width - USAGE_MARGIN_LEFT - 16);
+  const labelFlipShare = HOVER_LABEL_ESTIMATED_WIDTH / plotWidth;
+  const labelInsideShare = HOVER_LABEL_INSIDE_ESTIMATED_WIDTH / plotWidth;
+  const hoverTable = scopedTableName(TABLE_USAGE_HOVER, scope);
+  await execSql(`
+CREATE OR REPLACE VIEW ${hoverTable} AS
+SELECT
+  usage.*,
+  date_diff('millisecond', timestamp_local, timestamp_end_local) AS hover_interval_ms,
+  epoch_ms(CAST((epoch_ms(timestamp_local) + epoch_ms(timestamp_end_local)) / 2 AS BIGINT)) AS hover_mid_local,
+  concat(
+    ${sqlIntervalLabel("timestamp_local", "timestamp_end_local")},
+    '\n',
+    CAST(round(usage_kwh, 2) AS VARCHAR),
+    ' kWh'
+  ) AS hover_title
+FROM ${usageTable} AS usage
+ORDER BY timestamp_local, read_time_occurrence, interval_index
+`.trim());
+  if (!isCurrent()) return;
+  const fullDomain = [asMillis(extent.lo), asMillis(extent.hi)];
   const overviewRange = vg.Selection.single();
   const detailRange = vg.Selection.single();
   const focusRange = vg.Selection.intersect({ include: [overviewRange, detailRange] });
+  const hoverPoint = vg.Selection.single({ empty: true });
+  const hoverLabelCutoff = vg.Param.value(new Date(fullDomain[1]));
+  const hoverInsideIntervalMs = vg.Param.value((fullDomain[1] - fullDomain[0]) * labelInsideShare);
 
   const top = vg.plot(
-    vg.areaY(source(TABLE_USAGE, focusRange), {
+    vg.areaY(source(hoverTable, focusRange), {
       x: "timestamp_local",
       y: "usage_kwh",
       curve: "step-after",
@@ -349,10 +462,82 @@ export async function renderUsageChart(container: HTMLElement, usage: ImportResu
       stroke: "var(--chart-line)",
       strokeWidth: 1
     }),
+    vg.rectX(source(hoverTable, hoverPoint), {
+      x1: "timestamp_local",
+      x2: "timestamp_end_local",
+      fill: "rgba(201, 147, 58, 0.16)",
+      stroke: "rgba(201, 147, 58, 0.7)",
+      strokeWidth: 1
+    }),
+    vg.text(source(hoverTable, hoverPoint), {
+      x: "timestamp_local",
+      text: "hover_title",
+      filter: vg.gte("hover_interval_ms", hoverInsideIntervalMs),
+      dx: 8,
+      dy: 7,
+      frameAnchor: "top-left",
+      textAnchor: "start",
+      lineAnchor: "top",
+      lineHeight: 1.28,
+      fontSize: 12,
+      fill: "var(--text)",
+      stroke: "var(--bg)",
+      strokeWidth: 4,
+      paintOrder: "stroke",
+      pointerEvents: "none"
+    }),
+    vg.text(source(hoverTable, hoverPoint), {
+      x: "timestamp_end_local",
+      text: "hover_title",
+      filter: vg.and(
+        vg.lt("hover_interval_ms", hoverInsideIntervalMs),
+        vg.lte("timestamp_end_local", hoverLabelCutoff)
+      ),
+      dx: 8,
+      dy: 7,
+      frameAnchor: "top-left",
+      textAnchor: "start",
+      lineAnchor: "top",
+      lineHeight: 1.28,
+      fontSize: 12,
+      fill: "var(--text)",
+      stroke: "var(--bg)",
+      strokeWidth: 4,
+      paintOrder: "stroke",
+      pointerEvents: "none"
+    }),
+    vg.text(source(hoverTable, hoverPoint), {
+      x: "timestamp_local",
+      text: "hover_title",
+      filter: vg.and(
+        vg.lt("hover_interval_ms", hoverInsideIntervalMs),
+        vg.gt("timestamp_end_local", hoverLabelCutoff)
+      ),
+      dx: -8,
+      dy: 7,
+      frameAnchor: "top-right",
+      textAnchor: "end",
+      lineAnchor: "top",
+      lineHeight: 1.28,
+      fontSize: 12,
+      fill: "var(--text)",
+      stroke: "var(--bg)",
+      strokeWidth: 4,
+      paintOrder: "stroke",
+      pointerEvents: "none"
+    }),
+    vg.dot(source(hoverTable, focusRange), {
+      x: "hover_mid_local",
+      y: "usage_kwh",
+      r: 4,
+      fillOpacity: 0,
+      strokeOpacity: 0
+    }),
+    vg.nearestX({ as: hoverPoint, maxRadius: 10000 }),
     ...commonOptions(width, 330)
   ) as HTMLElement;
   const middle = vg.plot(
-    vg.areaY(source(TABLE_USAGE, overviewRange), {
+    vg.areaY(source(usageTable, overviewRange), {
       x: "timestamp_local",
       y: "usage_kwh",
       curve: "step-after",
@@ -367,7 +552,7 @@ export async function renderUsageChart(container: HTMLElement, usage: ImportResu
     ...commonOptions(width, 120)
   ) as HTMLElement;
   const bottom = vg.plot(
-    vg.areaY(source(TABLE_USAGE), {
+    vg.areaY(source(usageTable), {
       x: "timestamp_local",
       y: "usage_kwh",
       curve: "step-after",
@@ -382,8 +567,20 @@ export async function renderUsageChart(container: HTMLElement, usage: ImportResu
     ...commonOptions(width, 110)
   ) as HTMLElement;
 
+  if (!isCurrent()) return;
   container.replaceChildren(top, middle, bottom);
-  attachLinkedInteractions({ overviewRange, detailRange, fullDomain, top, middle, bottom });
+  attachLinkedInteractions({
+    overviewRange,
+    detailRange,
+    hoverLabelCutoff,
+    hoverInsideIntervalMs,
+    labelFlipShare,
+    labelInsideShare,
+    fullDomain,
+    top,
+    middle,
+    bottom
+  });
 }
 
 function monthTickFormat(value: unknown, index: number): string {
@@ -560,8 +757,10 @@ async function renderPairedBillChart(
     height?: number;
     tickFormat?: (value: unknown, index: number) => string;
     markTouHigher?: boolean;
-  } = {}
+  } = {},
+  isCurrent: RenderGuard = alwaysCurrent
 ): Promise<void> {
+  if (!isCurrent()) return;
   element.replaceChildren();
   if (!groups.length) return;
   const rows = pairedBillRows(groups);
@@ -575,6 +774,7 @@ async function renderPairedBillChart(
       title: "VARCHAR"
     }
   });
+  if (!isCurrent()) return;
   const width = chartWidth(element);
   const { groupStep } = pairedGeometry(groups.length);
   const centers = groups.map((_, index) => index * groupStep);
@@ -591,11 +791,13 @@ async function renderPairedBillChart(
     await loadObjectsTable(`${tableName}_missing`, missingRows, {
       types: { x1: "DOUBLE", x2: "DOUBLE", yMax: "DOUBLE", title: "VARCHAR" }
     });
+    if (!isCurrent()) return;
   }
   if (options.markTouHigher && touHigherRows.length) {
     await loadObjectsTable(`${tableName}_tou_higher`, touHigherRows, {
       types: { x1: "DOUBLE", x2: "DOUBLE", yMax: "DOUBLE", title: "VARCHAR" }
     });
+    if (!isCurrent()) return;
   }
   const marks: unknown[] = [];
   if (missingRows.length) {
@@ -660,6 +862,7 @@ async function renderPairedBillChart(
     vg.colorRange([SERIES_COLORS.standard, SERIES_COLORS.tou]),
     vg.yGrid(true)
   ) as HTMLElement;
+  if (!isCurrent()) return;
   element.replaceChildren(plot);
   if (missingRows.length || (options.markTouHigher && touHigherRows.length)) {
     schedulePlotOverlay(plot, () => {
@@ -697,8 +900,10 @@ async function renderBarChart(
     touHigherIndices?: number[];
     xCount?: number;
     yMax?: number;
-  }
+  },
+  isCurrent: RenderGuard = alwaysCurrent
 ): Promise<void> {
+  if (!isCurrent()) return;
   element.replaceChildren();
   if (!rows.length) return;
   const types: Record<string, string> = {
@@ -708,6 +913,7 @@ async function renderBarChart(
   if (options.group) types[options.group] = "VARCHAR";
   if ("title" in rows[0]) types.title = "VARCHAR";
   await loadObjectsTable(tableName, rows, { types });
+  if (!isCurrent()) return;
   const width = chartWidth(element);
   const height = options.height ?? 320;
   const marginBottom = options.group ? 62 : 48;
@@ -749,6 +955,7 @@ async function renderBarChart(
         title: "VARCHAR"
       }
     });
+    if (!isCurrent()) return;
   }
   if (touHigherRows.length) {
     await loadObjectsTable(`${tableName}_tou_higher`, touHigherRows, {
@@ -758,6 +965,7 @@ async function renderBarChart(
         title: "VARCHAR"
       }
     });
+    if (!isCurrent()) return;
   }
   const marks: unknown[] = [];
   if (missingRows.length) {
@@ -820,6 +1028,7 @@ async function renderBarChart(
     vg.colorRange(options.colorRange),
     vg.yGrid(true)
   ) as HTMLElement;
+  if (!isCurrent()) return;
   element.replaceChildren(plot);
   if (missingRows.length || touHigherRows.length) {
     schedulePlotOverlay(plot, () => {
@@ -857,17 +1066,26 @@ function monthFacetRows(columns: number, yMax: number): Record<string, string | 
 async function renderMonthlyLoadProfiles(
   element: HTMLElement,
   comparison: RateComparison,
-  usage: ImportResult
+  usage: ImportResult,
+  tableName: string,
+  usageTable: string,
+  isCurrent: RenderGuard = alwaysCurrent
 ): Promise<void> {
+  if (!isCurrent()) return;
   element.replaceChildren();
   if (!(usage.usageSummary?.intervalCount ?? usage.rows.length)) return;
   await ensureUsageTable(usage);
+  if (!isCurrent()) return;
   const width = chartWidth(element);
   const columns = width < 720 ? 2 : 4;
   const rowsPerChart = Math.ceil(12 / columns);
+  const monthTable = `${tableName}_months`;
+  const peakTable = `${tableName}_peak`;
+  const emptyTable = `${tableName}_empty`;
+  const shareTable = `${tableName}_share`;
 
   await execSql(`
-CREATE OR REPLACE TABLE ${TABLE_MONTHLY_PROFILE} AS
+CREATE OR REPLACE TABLE ${tableName} AS
 SELECT
   month(CAST(timestamp_local AS TIMESTAMP)) AS month_index,
   ((month(CAST(timestamp_local AS TIMESTAMP)) - 1) % ${columns}) AS facet_col,
@@ -885,21 +1103,24 @@ SELECT
     CAST(round(avg(usage_kwh), 2) AS VARCHAR),
     ' kWh'
   ) AS tooltip
-FROM ${TABLE_USAGE}
+FROM ${usageTable}
 GROUP BY month_index, facet_col, facet_row, hour
 ORDER BY month_index, hour
 `.trim());
+  if (!isCurrent()) return;
 
   const [maxRow] = await queryJson<{ yMax: number }>(
-    `SELECT COALESCE(max(avg_kwh), 0) AS yMax FROM ${TABLE_MONTHLY_PROFILE}`
+    `SELECT COALESCE(max(avg_kwh), 0) AS yMax FROM ${tableName}`
   );
+  if (!isCurrent()) return;
   const yMax = niceMax(Number(maxRow?.yMax ?? 0) * 1.08);
   const monthRows = monthFacetRows(columns, yMax);
   const monthsWithData = new Set(
     (await queryJson<{ month_index: number }>(
-      `SELECT DISTINCT month_index FROM ${TABLE_MONTHLY_PROFILE}`
+      `SELECT DISTINCT month_index FROM ${tableName}`
     )).map(row => Number(row.month_index))
   );
+  if (!isCurrent()) return;
   const peakRows = monthRows.map(row => ({
     ...row,
     start_hour: 18,
@@ -931,15 +1152,16 @@ ORDER BY month_index, hour
     });
 
   await Promise.all([
-    loadObjectsTable(TABLE_MONTHLY_PROFILE_MONTHS, monthRows),
-    loadObjectsTable(TABLE_MONTHLY_PROFILE_PEAK, peakRows),
-    loadObjectsTable(TABLE_MONTHLY_PROFILE_EMPTY, emptyRows.length ? emptyRows : [{ month_index: -1, facet_col: -1, facet_row: -1, empty_x: 12, empty_y: yMax / 2, label: "" }]),
-    loadObjectsTable(TABLE_MONTHLY_PROFILE_SHARE, shareRows.length ? shareRows : [{ month_index: -1, facet_col: -1, facet_row: -1, share_x: 20, label_y: yMax, share: "", title: "" }])
+    loadObjectsTable(monthTable, monthRows),
+    loadObjectsTable(peakTable, peakRows),
+    loadObjectsTable(emptyTable, emptyRows.length ? emptyRows : [{ month_index: -1, facet_col: -1, facet_row: -1, empty_x: 12, empty_y: yMax / 2, label: "" }]),
+    loadObjectsTable(shareTable, shareRows.length ? shareRows : [{ month_index: -1, facet_col: -1, facet_row: -1, share_x: 20, label_y: yMax, share: "", title: "" }])
   ]);
+  if (!isCurrent()) return;
 
-  const peakPatternId = `${TABLE_MONTHLY_PROFILE}-peak-hatch`;
+  const peakPatternId = `${tableName}-peak-hatch`;
   const plot = vg.plot(
-    vg.rectY(source(TABLE_MONTHLY_PROFILE_PEAK), {
+    vg.rectY(source(peakTable), {
       x1: "start_hour",
       x2: "end_hour",
       y1: 0,
@@ -950,7 +1172,7 @@ ORDER BY month_index, hour
       fillOpacity: 0.5,
       title: "title"
     }),
-    vg.areaY(source(TABLE_MONTHLY_PROFILE), {
+    vg.areaY(source(tableName), {
       x: "hour",
       y: "avg_kwh",
       fx: "facet_col",
@@ -959,7 +1181,7 @@ ORDER BY month_index, hour
       fillOpacity: 0.18,
       curve: "linear"
     }),
-    vg.lineY(source(TABLE_MONTHLY_PROFILE), {
+    vg.lineY(source(tableName), {
       x: "hour",
       y: "avg_kwh",
       fx: "facet_col",
@@ -967,7 +1189,7 @@ ORDER BY month_index, hour
       stroke: "var(--chart-line)",
       strokeWidth: 1.35
     }),
-    vg.dot(source(TABLE_MONTHLY_PROFILE), {
+    vg.dot(source(tableName), {
       x: "hour",
       y: "avg_kwh",
       fx: "facet_col",
@@ -978,7 +1200,7 @@ ORDER BY month_index, hour
       title: "tooltip",
       tip: true
     }),
-    vg.text(source(TABLE_MONTHLY_PROFILE_MONTHS), {
+    vg.text(source(monthTable), {
       x: "label_x",
       y: "label_y",
       fx: "facet_col",
@@ -990,7 +1212,7 @@ ORDER BY month_index, hour
       fontWeight: 700,
       fontSize: 12
     }),
-    vg.text(source(TABLE_MONTHLY_PROFILE_SHARE), {
+    vg.text(source(shareTable), {
       x: "share_x",
       y: "label_y",
       fx: "facet_col",
@@ -1002,7 +1224,7 @@ ORDER BY month_index, hour
       fontWeight: 650,
       fontSize: 10
     }),
-    vg.text(source(TABLE_MONTHLY_PROFILE_EMPTY), {
+    vg.text(source(emptyTable), {
       x: "empty_x",
       y: "empty_y",
       fx: "facet_col",
@@ -1039,6 +1261,7 @@ ORDER BY month_index, hour
     vg.fyPaddingInner(0.22)
   ) as HTMLElement;
 
+  if (!isCurrent()) return;
   element.replaceChildren(plot);
   schedulePlotOverlay(plot, () => {
     const svg = plot.querySelector("svg");
@@ -1063,7 +1286,20 @@ export async function renderSummaryCharts(comparison: RateComparison, slots: {
   monthlyPeak: HTMLElement;
   annualPeak: HTMLElement;
   monthlyProfile: HTMLElement;
-}, usage: ImportResult): Promise<void> {
+}, usage: ImportResult, scope = "", isCurrent: RenderGuard = alwaysCurrent): Promise<void> {
+  if (!isCurrent()) return;
+  const monthlyBillsTable = scopedTableName(TABLE_MONTHLY_BILLS, scope);
+  const annualBillsTable = scopedTableName(TABLE_ANNUAL_BILLS, scope);
+  const monthlyPeakTable = scopedTableName(TABLE_MONTHLY_PEAK, scope);
+  const annualPeakTable = scopedTableName(TABLE_ANNUAL_PEAK, scope);
+  const monthlyProfileTable = scopedTableName(TABLE_MONTHLY_PROFILE, scope);
+  const usageTable = scopedTableName(TABLE_USAGE, scope);
+  if (usageTable !== TABLE_USAGE) {
+    await ensureUsageTable(usage);
+    if (!isCurrent()) return;
+    await execSql(`CREATE OR REPLACE TABLE ${usageTable} AS SELECT * FROM ${TABLE_USAGE}`);
+    if (!isCurrent()) return;
+  }
   const monthlyBillGroups = comparison.monthly.map((month, index) => ({
     group: month.month,
     standard: month.standard.total,
@@ -1114,14 +1350,14 @@ export async function renderSummaryCharts(comparison: RateComparison, slots: {
     .filter(index => index >= 0);
   const monthlyEnergyMax = niceMax(Math.max(...comparison.monthly.map(month => month.totalKwh)) * 1.04);
   await Promise.all([
-    renderMonthlyLoadProfiles(slots.monthlyProfile, comparison, usage),
-    renderPairedBillChart(slots.monthlyBills, TABLE_MONTHLY_BILLS, monthlyBillGroups, {
+    renderMonthlyLoadProfiles(slots.monthlyProfile, comparison, usage, monthlyProfileTable, usageTable, isCurrent),
+    renderPairedBillChart(slots.monthlyBills, monthlyBillsTable, monthlyBillGroups, {
       markTouHigher: true
-    }),
-    renderPairedBillChart(slots.annualBills, TABLE_ANNUAL_BILLS, annualBillGroups, {
+    }, isCurrent),
+    renderPairedBillChart(slots.annualBills, annualBillsTable, annualBillGroups, {
       height: 270
-    }),
-    renderBarChart(slots.monthlyPeak, TABLE_MONTHLY_PEAK, monthlyPeakRows, {
+    }, isCurrent),
+    renderBarChart(slots.monthlyPeak, monthlyPeakTable, monthlyPeakRows, {
       x: "month",
       y: "kwh",
       fill: "period",
@@ -1135,8 +1371,8 @@ export async function renderSummaryCharts(comparison: RateComparison, slots: {
       yMax: monthlyEnergyMax,
       colorDomain: ["Off-peak", "On-peak"],
       colorRange: [SERIES_COLORS.offPeak, SERIES_COLORS.onPeak]
-    }),
-    renderBarChart(slots.annualPeak, TABLE_ANNUAL_PEAK, annualPeakRows, {
+    }, isCurrent),
+    renderBarChart(slots.annualPeak, annualPeakTable, annualPeakRows, {
       x: "year",
       y: "kwh",
       fill: "period",
@@ -1147,6 +1383,6 @@ export async function renderSummaryCharts(comparison: RateComparison, slots: {
       height: 270,
       colorDomain: ["Off-peak", "On-peak"],
       colorRange: [SERIES_COLORS.offPeak, SERIES_COLORS.onPeak]
-    })
+    }, isCurrent)
   ]);
 }

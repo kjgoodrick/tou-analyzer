@@ -4,9 +4,9 @@ import "@fontsource/source-serif-4/latin-600.css";
 import "@fontsource/source-serif-4/latin-700.css";
 import "./styles.css";
 import { compareMonthlyUsage, compareRates, runMonthlyScenario, runScenario } from "./analysis";
-import { SAMPLE_CSV } from "./data";
 import { bridgeConfigured, requestCsvFromExtension } from "./extensionBridge";
 import { formatDateRange, formatKwh, formatMoney, formatNumber, formatPercent, monthName } from "./format";
+import { importPublishedProfile, PUBLISHED_PROFILES } from "./publishedProfiles";
 import { DEFAULT_BILLING_ASSUMPTIONS, RIDER_DETAILS } from "./rates";
 import { clearCurrentImport, loadCurrentImport, saveCurrentImport } from "./storage";
 import { renderSummaryCharts, renderUsageChart } from "./charts";
@@ -35,6 +35,7 @@ let scenarioInputs: ScenarioInputs = {
 };
 let resizeHandlerBound = false;
 let resizeRedrawTimer: number | null = null;
+let chartRenderGeneration = 0;
 
 type ThemeChoice = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
@@ -427,7 +428,7 @@ function bindStaticEvents(): void {
   });
 
   document.querySelector<HTMLButtonElement>("#sample-import")?.addEventListener("click", () => {
-    runImport(() => importUsageFile(new File([SAMPLE_CSV], "sample.csv", { type: "text/csv" })));
+    runImport(() => importPublishedProfile(PUBLISHED_PROFILES[0]));
   });
 
   document.querySelector<HTMLButtonElement>("#clear-data")?.addEventListener("click", async () => {
@@ -550,6 +551,7 @@ function bindSegmented(selector: string, value: string, onChange: (value: string
 }
 
 async function runImport(loader: () => Promise<ImportResult>): Promise<void> {
+  chartRenderGeneration += 1;
   setImportStatus("Loading data...");
   try {
     const result = await loader();
@@ -607,9 +609,14 @@ function renderDashboard(redrawCharts = true): void {
   renderTables(comparison);
 
   if (redrawCharts) {
+    const chartRun = chartRenderGeneration + 1;
+    chartRenderGeneration = chartRun;
+    const isCurrentChartRun = () => chartRenderGeneration === chartRun;
+    const chartScope = `run_${chartRun}`;
     const usageChart = document.querySelector<HTMLElement>("#usage-chart");
     if (usageChart) {
-      renderUsageChart(usageChart, currentImport).catch(error => {
+      renderUsageChart(usageChart, currentImport, isCurrentChartRun, chartScope).catch(error => {
+        if (!isCurrentChartRun()) return;
         usageChart.textContent = error instanceof Error ? error.message : String(error);
       });
     }
@@ -620,7 +627,8 @@ function renderDashboard(redrawCharts = true): void {
       annualPeak: requiredSlot("#annual-peak-chart"),
       monthlyProfile: requiredSlot("#monthly-profile-chart")
     };
-    renderSummaryCharts(comparison, slots, currentImport).catch(error => {
+    renderSummaryCharts(comparison, slots, currentImport, chartScope, isCurrentChartRun).catch(error => {
+      if (!isCurrentChartRun()) return;
       for (const slot of Object.values(slots)) {
         slot.textContent = error instanceof Error ? error.message : String(error);
       }
