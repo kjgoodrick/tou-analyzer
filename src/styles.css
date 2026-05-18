@@ -17,6 +17,7 @@
   --chart-line: #4e79a7;
   --button-bg: #111418;
   --button-text: #ffffff;
+  --control-height: 44px;
   --good: #2f7d4f;
   --poor: #b95f58;
   --warn: #b68100;
@@ -87,6 +88,7 @@ select {
 button,
 select,
 input[type="file"]::file-selector-button {
+  min-height: var(--control-height);
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel);
@@ -119,6 +121,7 @@ select {
 }
 
 input[type="number"] {
+  min-height: var(--control-height);
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--text);
@@ -493,6 +496,8 @@ main {
 
 .controls-grid label {
   display: grid;
+  grid-template-rows: auto var(--control-height);
+  align-content: start;
   gap: 6px;
   color: var(--muted);
   font-family: var(--font-sans);
@@ -670,6 +675,13 @@ main {
   display: block;
 }
 
+.controls-grid select,
+.controls-grid input[type="number"],
+.controls-grid .percent-input,
+.controls-grid .segmented {
+  height: var(--control-height);
+}
+
 .percent-input input {
   padding-right: 2rem;
 }
@@ -689,6 +701,7 @@ main {
 .segmented {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  min-height: var(--control-height);
   border: 1px solid var(--faint);
   border-radius: 6px;
   background: var(--panel-soft);
