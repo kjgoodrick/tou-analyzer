@@ -10,7 +10,7 @@ import { importPublishedProfile, PUBLISHED_PROFILES } from "./publishedProfiles"
 import { DEFAULT_BILLING_ASSUMPTIONS, RIDER_DETAILS } from "./rates";
 import { clearCurrentImport, loadCurrentImport, saveCurrentImport } from "./storage";
 import { renderSummaryCharts, renderUsageChart } from "./charts";
-import { importUsageFile } from "./mosaicData";
+import { importUsageFile, warmUsageDatabase } from "./mosaicData";
 import {
   BillingAssumptions,
   CustomerClassId,
@@ -907,6 +907,7 @@ function billCells(schedule: string, bill: RateComparison["monthly"][number]["st
 
 async function init(): Promise<void> {
   setTheme(selectedTheme());
+  warmUsageDatabase().catch(() => undefined);
   currentImport = await loadCurrentImport().catch(() => null);
   render();
 }

@@ -17,6 +17,7 @@ const CANONICAL_FILE_PREFIX = "tou-analyzer-canonical";
 const LOAD_OBJECTS_BATCH_SIZE = 250;
 
 let connectorPromise: Promise<ReturnType<typeof vg.wasmConnector>> | null = null;
+let warmUsageDatabasePromise: Promise<void> | null = null;
 
 export { TABLE_USAGE };
 
@@ -39,6 +40,18 @@ async function duckdb(): Promise<Awaited<ReturnType<ReturnType<typeof vg.wasmCon
 
 export async function execSql(sql: string | string[]): Promise<void> {
   await vg.coordinator().exec(Array.isArray(sql) ? sql : [sql]);
+}
+
+export async function warmUsageDatabase(): Promise<void> {
+  if (!warmUsageDatabasePromise) {
+    warmUsageDatabasePromise = queryJson("SELECT 1 AS ready")
+      .then(() => undefined)
+      .catch(error => {
+        warmUsageDatabasePromise = null;
+        throw error;
+      });
+  }
+  return warmUsageDatabasePromise;
 }
 
 export async function loadObjectsTable(
@@ -319,6 +332,7 @@ export async function importUsageFile(file: File): Promise<ImportResult> {
     throw new Error("Choose a CSV or Parquet usage file.");
   }
 
+  await warmUsageDatabase();
   const storedFile = await storedUsageFileFromFile(file);
   const { statsSql, rowsSql } = await createNormalizedUsageTableFromFile(storedFile);
 
