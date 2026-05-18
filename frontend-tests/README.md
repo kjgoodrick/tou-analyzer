@@ -9,3 +9,5 @@ npm run test:perf
 ```
 
 `test:perf` records scroll metrics as Playwright artifacts. The performance test is report-only and does not enforce FPS or long-task thresholds yet.
+
+`test:frontend` runs the desktop Chromium tests plus the mobile responsive project.

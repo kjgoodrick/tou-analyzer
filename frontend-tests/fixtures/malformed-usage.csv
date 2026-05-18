@@ -1,0 +1,3 @@
+timestamp_local,read_date,read_time,usage_kwh
+not-a-date,not-a-date,18:00,1
+also-not-a-date,also-not-a-date,19:00,2

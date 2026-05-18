@@ -12,7 +12,7 @@
     "deploy": "npm run build && npx wrangler deploy",
     "deploy:preview": "npm run build && npx wrangler versions upload",
     "test": "vitest run",
-    "test:frontend": "playwright test --project=chromium --grep-invert @performance",
+    "test:frontend": "playwright test --grep-invert @performance",
     "test:frontend:ui": "playwright test --ui",
     "test:perf": "playwright test --project=chromium --grep @performance",
     "typecheck": "tsc --noEmit"

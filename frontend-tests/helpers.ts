@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 interface CapturedIssue {
   message: string;
@@ -45,6 +45,18 @@ export async function loadSampleData(page: Page): Promise<void> {
   await expect(page.locator("#recommendation-title")).toHaveText(/TOU/i);
 }
 
+export async function clearSavedData(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await new Promise<void>(resolve => {
+      const request = indexedDB.deleteDatabase("tou-analyzer");
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+      request.onblocked = () => resolve();
+    });
+    localStorage.clear();
+  });
+}
+
 export async function waitForCharts(page: Page): Promise<void> {
   await expect(page.locator("#usage-chart .plot")).toHaveCount(3, { timeout: 45_000 });
   await expect(page.locator("#usage-chart svg")).toHaveCount(3);
@@ -58,6 +70,34 @@ export async function waitForCharts(page: Page): Promise<void> {
   ]) {
     await expect(page.locator(selector)).toBeVisible({ timeout: 45_000 });
   }
+}
+
+export async function metricByLabel(page: Page, label: string): Promise<Locator> {
+  const metric = page.locator(".metric", { has: page.locator(".metric-label", { hasText: label }) }).first();
+  await expect(metric).toBeVisible();
+  return metric;
+}
+
+export async function expectMetric(page: Page, label: string, value: string | RegExp, note?: string | RegExp): Promise<void> {
+  const metric = await metricByLabel(page, label);
+  await expect(metric.locator("strong")).toHaveText(value);
+  if (note !== undefined) {
+    await expect(metric.locator("small")).toHaveText(note);
+  }
+}
+
+export async function expectNoUnnamedButtons(page: Page): Promise<void> {
+  const unnamedButtons = await page.locator("button").evaluateAll(buttons =>
+    buttons
+      .filter(button => {
+        const text = button.textContent?.trim();
+        const ariaLabel = button.getAttribute("aria-label")?.trim();
+        const title = button.getAttribute("title")?.trim();
+        return !text && !ariaLabel && !title;
+      })
+      .map(button => button.outerHTML)
+  );
+  expect(unnamedButtons).toEqual([]);
 }
 
 export async function setInputValue(page: Page, selector: string, value: string): Promise<void> {
